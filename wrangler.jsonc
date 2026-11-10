@@ -1,0 +1,27 @@
+// Cloudflare Worker settings. No secrets live in this file.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "etsy-dashboard",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // The built phone app (HTML/JS/CSS). The Worker runs first so it can check the passcode.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  },
+
+  // The database. No database_id here on purpose: Cloudflare creates the
+  // database automatically on the first deploy. (See SETUP.md if that fails.)
+  "d1_databases": [{ "binding": "DB", "database_name": "etsy-dashboard" }],
+
+  // Daily data pull at 19:00 UTC (early morning in eastern Australia).
+  "triggers": { "crons": ["0 19 * * *"] },
+
+  // Not secret: the public Etsy shop number.
+  "vars": { "ETSY_SHOP_ID": "68560946" },
+
+  "observability": { "enabled": true }
+}

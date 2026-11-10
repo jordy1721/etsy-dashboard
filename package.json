@@ -1,0 +1,38 @@
+{
+  "name": "etsy-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal Etsy analytics dashboard (mobile-first PWA on Cloudflare Workers)",
+  "scripts": {
+    "predev": "node scripts/make-dev-vars.mjs",
+    "dev": "vite build && wrangler dev",
+    "build": "vite build",
+    "deploy": "vite build && wrangler deploy",
+    "seed": "tsx scripts/seed.ts",
+    "icons": "node scripts/make-icons.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
+    "chart.js": "^4.6.1",
+    "hono": "^4.13.17",
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261110.1",
+    "@eslint/js": "^10.0.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.160.0"
+  }
+}

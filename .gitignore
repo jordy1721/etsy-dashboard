@@ -1,0 +1,18 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Local Cloudflare state (local database lives here)
+.wrangler/
+
+# SECRETS - never commit these
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Misc
+*.log
+.DS_Store
+coverage/
