@@ -18,7 +18,8 @@ export function parseCsv(text: string): string[][] {
   let row: string[] = [];
   let cell = "";
   let inQuotes = false;
-  const src = text.replace(/^﻿/, ""); // remove the invisible "BOM" some files start with
+  // Some files start with an invisible "BOM" character (code 0xFEFF). Remove it.
+  const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
     if (inQuotes) {

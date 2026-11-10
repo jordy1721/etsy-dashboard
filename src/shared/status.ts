@@ -27,17 +27,19 @@ export function listingStatus(input: { views: number; sales: number; ageDays: nu
   const rate = views > 0 ? (sales / views) * 100 : null;
   const rateText = rate === null ? "" : `${rate.toFixed(1)}% of views turn into a sale`;
 
+  const seen = views === 0 ? "No views" : `Only ${views} view${views === 1 ? "" : "s"}`;
+
   // Not many eyes on it yet: the listing itself cannot be judged.
   if (views < R.minViewsToJudge) {
     if (ageDays < R.graceDays) {
       return {
         status: "Not enough data yet",
-        why: `Only ${views} views in ${ageDays} days. Too new to judge. Check again after day ${R.graceDays}.`,
+        why: `${seen} in ${ageDays} days. Too new to judge. Check again after day ${R.graceDays}.`,
       };
     }
     return {
       status: "Needs traffic",
-      why: `Only ${views} views in ${ageDays} days. People are not finding it. The listing is not the problem yet.`,
+      why: `${seen} in ${ageDays} days. People are not finding it. The listing is not the problem yet.`,
     };
   }
 

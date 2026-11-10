@@ -30,6 +30,16 @@ export function buildStatus(all: AllData, env: Env, now: number): SyncStatus {
   };
 }
 
+/** Read saved JSON text. Returns null if it is missing or broken. */
+function parseJson<T>(text: string | undefined): T | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function buildDashboardFrom(all: AllData, env: Env, now: number): DashboardData {
   // Suggestions and the Listings screen are about listings that are live now.
   const listings = all.listings.filter((l) => l.state === "active");
@@ -58,12 +68,7 @@ export function buildDashboardFrom(all: AllData, env: Env, now: number): Dashboa
     settings: all.settings,
   });
 
-  let briefing: Briefing | null = null;
-  try {
-    briefing = all.meta.has("briefing") ? (JSON.parse(all.meta.get("briefing") ?? "null") as Briefing | null) : null;
-  } catch {
-    briefing = null;
-  }
+  const briefing = parseJson<Briefing>(all.meta.get("briefing"));
 
   return {
     generatedAt: now,

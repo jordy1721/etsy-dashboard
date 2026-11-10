@@ -302,17 +302,21 @@ export function buildSuggestions(ctx: SuggestionContext): Suggestion[] {
   return all.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
 
+/** Rules that give the same kind of advice share a topic. */
+const TOPIC: Record<string, string> = { "low-profit": "price", "deep-discount": "price" };
+
 /**
  * The 3 most valuable actions this week.
- * We take the top items but only ONE per rule, so the list is not three
- * versions of the same advice.
+ * We take the top items but only ONE per topic, so the list is not three
+ * versions of the same advice (for example "raise the price" three times).
  */
 export function pickNextSteps(suggestions: Suggestion[], count = 3): Suggestion[] {
   const seen = new Set<string>();
   const out: Suggestion[] = [];
   for (const sug of suggestions) {
-    if (seen.has(sug.rule)) continue;
-    seen.add(sug.rule);
+    const topic = TOPIC[sug.rule] ?? sug.rule;
+    if (seen.has(topic)) continue;
+    seen.add(topic);
     out.push(sug);
     if (out.length >= count) break;
   }

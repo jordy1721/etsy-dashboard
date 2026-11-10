@@ -312,9 +312,9 @@ export async function loadAll(db: D1Database): Promise<AllData> {
   }
 
   const meta = new Map(rows(10).map((r) => [str(r.key), str(r.value)]));
-  let shop: ShopInfo | null = null;
+  let shop: ShopInfo | null;
   try {
-    shop = meta.has("shop") ? (JSON.parse(meta.get("shop") ?? "null") as ShopInfo | null) : null;
+    shop = JSON.parse(meta.get("shop") ?? "null") as ShopInfo | null;
   } catch {
     shop = null;
   }
