@@ -73,6 +73,16 @@ Everything on the list of screens and features is built and works on sample data
 - Ad spend, costs, visits, tags and descriptions in the sample are invented to exercise every screen and rule (for example a description that mentions a "Mega Bundle").
 - Real data replaces sample data at the first successful pull. Manual entries you typed yourself are kept.
 
+**Look and layout (redesign)**
+- Theme: ink-wash on parchment, taken from the reference image: warm paper colours, serif type (the fonts already on iPhone and computers, nothing downloaded), soft translucent cards, dark umber buttons.
+- The background (mountains, cherry blossom branch, pagoda) is drawn in code as SVG in `src/client/Scenery.tsx`. The reference image itself is not used or copied, so there are no image files and no licence question.
+- Device detection is in `src/client/device.ts`. An iPhone always gets the phone layout (one column, bottom tab bar, safe-area padding). Any other screen 900px or wider gets the desktop layout (sidebar, big heading, cards side by side). Resizing a desktop window switches live.
+- Dark mode follows the device until the moon button is tapped; the choice is remembered on that device.
+- Chart colour is a warm umber that passes the colour-blind-safety validator in light and dark. The small trend lines in the desktop tiles show a 7-day running total and are decoration only; they are hidden on the phone where there is no room.
+- The reference shows a world map and product photos. Those are left out: Etsy listing photos would need another API call per listing, and a map adds weight for 6 countries. "Sales by region" and "Top listings" use share bars instead.
+- The Home Screen icon changed to match. An icon already on a Home Screen keeps the old picture until it is removed and added again.
+- Checked in a Chromium browser at iPhone 15 size and at 1440 and 1000px wide, light and dark: no sideways scrolling, no console errors. Still not tested on a physical iPhone.
+
 **Small things**
 - The Listings and Fix screens only consider active listings.
 - Chart colour was checked with a colour-blind-safety validator; charts are single-series bars with tap-to-see values.

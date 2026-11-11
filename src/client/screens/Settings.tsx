@@ -417,12 +417,14 @@ export function Settings({ data, reload }: { data: DashboardData; reload: () => 
   };
   return (
     <>
+      <div class="masonry">
       <StatusCard data={data} reload={reload} />
       <WeeklyCard data={data} reload={reload} />
       <CostsCard data={data} reload={reload} />
       <ProfitSettingsCard data={data} reload={reload} />
       <CsvCard reload={reload} />
-      <button class="btn block" onClick={() => void logout()}>
+      </div>
+      <button class="btn block narrow" onClick={() => void logout()}>
         Lock dashboard (log out)
       </button>
     </>

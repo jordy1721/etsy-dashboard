@@ -13,6 +13,7 @@ export function Money({ data }: { data: DashboardData }) {
   return (
     <>
       <p class="muted small">All time, in Australian dollars.</p>
+      <div class="masonry">
 
       <Card title="Profit">
         <KV k="Revenue (items, after discounts)" v={formatAud(m.revenueCents)} />
@@ -130,6 +131,7 @@ export function Money({ data }: { data: DashboardData }) {
           ))}
         </Card>
       )}
+      </div>
     </>
   );
 }

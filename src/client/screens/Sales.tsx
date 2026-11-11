@@ -81,7 +81,8 @@ export function Sales({ data }: { data: DashboardData }) {
   const countries = [...perCountry.entries()].map(([c, set]) => ({ c, n: set.size })).sort((x, y) => y.n - x.n);
 
   return (
-    <>
+    <div class="split side">
+      <div class="stack sticky-col" style="gap:14px">
       <section class="card stack">
         <div class="chips">
           <button class={`chip ${isPreset(7) ? "active" : ""}`} onClick={() => preset(7)}>7 days</button>
@@ -109,29 +110,33 @@ export function Sales({ data }: { data: DashboardData }) {
         </label>
       </section>
 
-      <div class="tiles">
-        <div class="tile">
+      <div class="tiles two">
+        <div class="tile plain">
           <div class="label">Items sold</div>
           <div class="value">{sum(rows.map((r) => r.quantity))}</div>
         </div>
-        <div class="tile">
+        <div class="tile plain">
           <div class="label">Revenue</div>
           <div class="value">{formatAud(sum(rows.map((r) => r.paidCents)))}</div>
         </div>
       </div>
 
+      </div>
+
+      <div class="stack" style="gap:14px">
       {rows.length === 0 ? (
         <Card>
           <p class="muted center">No sales in this range.</p>
         </Card>
       ) : (
         <>
+          <div class="grid-2">
           <Card title="Sales by day">
             <BarChart
               labels={span.map(shortDay)}
               values={span.map((d) => (perDay.get(d) ?? 0) / 100)}
               format={(v) => formatAud(Math.round(v * 100))}
-              height={150}
+              height={190}
               ariaLabel="Bar chart of revenue per day in the chosen date range"
             />
           </Card>
@@ -141,16 +146,20 @@ export function Sales({ data }: { data: DashboardData }) {
               labels={countries.map((x) => countryName(x.c))}
               values={countries.map((x) => x.n)}
               format={(v) => (Number.isInteger(v) ? String(v) : "")}
-              height={Math.max(90, countries.length * 30 + 40)}
+              height={Math.max(190, countries.length * 30 + 40)}
               ariaLabel="Bar chart of orders per buyer country"
             />
           </Card>
+          </div>
           <h2 class="section-title" style="margin:4px 0 -4px">{rows.length} {rows.length === 1 ? "sale" : "sales"}</h2>
-          {rows.map((s) => (
-            <SaleCard key={s.transactionId} sale={s} minProfit={data.settings.minProfitCents} />
-          ))}
+          <div class="grid-2">
+            {rows.map((s) => (
+              <SaleCard key={s.transactionId} sale={s} minProfit={data.settings.minProfitCents} />
+            ))}
+          </div>
         </>
       )}
-    </>
+      </div>
+    </div>
   );
 }

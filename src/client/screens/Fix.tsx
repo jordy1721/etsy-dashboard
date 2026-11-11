@@ -15,9 +15,11 @@ export function Fix({ data }: { data: DashboardData }) {
       <p class="muted small">
         {data.suggestions.length} things to fix, most important first. Each one shows the numbers it is based on.
       </p>
-      {data.suggestions.map((s, i) => (
-        <ActionCard key={s.id} item={s} rank={i + 1} open={i === 0} />
-      ))}
+      <div class="grid-2">
+        {data.suggestions.map((s, i) => (
+          <ActionCard key={s.id} item={s} rank={i + 1} open={i === 0} />
+        ))}
+      </div>
     </>
   );
 }

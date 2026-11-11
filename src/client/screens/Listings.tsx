@@ -64,9 +64,11 @@ export function Listings({ data }: { data: DashboardData }) {
       <p class="muted small">
         Views and favourites are totals since each listing went live. "Views → sales" is sales divided by listing views (Etsy does not share real visits).
       </p>
-      {data.listings.map((l) => (
-        <ListingCard key={l.listingId} l={l} />
-      ))}
+      <div class="grid-2">
+        {data.listings.map((l) => (
+          <ListingCard key={l.listingId} l={l} />
+        ))}
+      </div>
     </>
   );
 }

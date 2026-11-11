@@ -1,6 +1,6 @@
 # Etsy shop dashboard
 
-A private, phone-first dashboard for one Etsy shop. It shows revenue, sales, fees, ad spend, profit per sale, what is working, what is not, and what to do next. It runs free on Cloudflare and installs on an iPhone Home Screen.
+A private dashboard for one Etsy shop, with one layout for iPhone and one for desktop. It shows revenue, sales, fees, ad spend, profit per sale, what is working, what is not, and what to do next. It runs free on Cloudflare and installs on an iPhone Home Screen.
 
 - **To set it up:** read [SETUP.md](SETUP.md). No Mac, no command line.
 - **Why things are built the way they are, and what is not verified:** read [DECISIONS.md](DECISIONS.md).
@@ -14,7 +14,7 @@ Until Etsy is connected the app shows invented **SAMPLE DATA** (with a banner sa
 | `src/shared/` | The brain. Pure maths and rules with no internet or database: money in cents, fees, profit per sale, listing status labels, the suggestion rules, the CSV reader. Used by both the server and the phone app. |
 | `src/server/` | The server (a Cloudflare Worker). Checks the passcode, talks to Etsy, saves to the database, answers the app's requests, and runs the daily data pull. |
 | `src/server/etsy/` | Everything about Etsy: the read-only API client, the "Connect Etsy" login, and the daily pull. |
-| `src/client/` | The phone app you see: the seven screens, charts and styles. |
+| `src/client/` | The app you see: the seven screens, charts, styles, the background artwork (`Scenery.tsx`) and the phone/desktop detection (`device.ts`). |
 | `public/` | Files that make it feel like an app: Home Screen icons, the web manifest, and the service worker (fast loading). |
 | `scripts/` | Small helper scripts for working on a computer: load sample data, draw the icons. |
 | `test/` | Automatic checks for the money maths, VAT handling, discounts, every suggestion rule, the Etsy client and the login. |

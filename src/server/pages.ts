@@ -11,8 +11,8 @@ export function escapeHtml(text: string): string {
 
 const HEAD = `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3e9dc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1613" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -22,24 +22,26 @@ const HEAD = `<meta charset="utf-8">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="icon" href="/icons/icon-192.png">
 <style>
-  :root { color-scheme: light dark; --bg:#f4f3ef; --card:#ffffff; --text:#141413; --muted:#5f5e5a; --line:#dddbd3; --accent:#1f5fbf; --bad:#b3261e; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#121211; --card:#1d1d1b; --text:#f0efec; --muted:#a9a79f; --line:#34332f; --accent:#6ea8f5; --bad:#f2867f; } }
+  /* Same ink-wash theme as the app: parchment, serif type, dark umber buttons. */
+  :root { color-scheme: light dark; --bg:#f3e9dc; --bg2:#ecdfce; --card:#fbf4ea; --field:#fffcf7; --text:#2b211b; --muted:#76655a; --line:rgba(92,64,45,.18); --accent:#46312a; --on:#fbf3ea; --bad:#a23b28; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1613; --bg2:#15110f; --card:#29211c; --field:#1b1613; --text:#f1e6da; --muted:#b3a294; --line:rgba(241,222,202,.16); --accent:#e8d2ba; --on:#2b211b; --bad:#f0988a; } }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin:0; background:var(--bg); color:var(--text); font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  body { margin:0; background:linear-gradient(180deg,var(--bg),var(--bg2)); color:var(--text);
+    font: 18px/1.5 "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
     display:flex; align-items:center; justify-content:center;
     padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); }
-  main { width:100%; max-width:380px; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:28px 22px; text-align:center; }
-  img { width:72px; height:72px; border-radius:16px; }
-  h1 { font-size:22px; margin:14px 0 4px; }
+  main { width:100%; max-width:400px; background:var(--card); border:1px solid var(--line); border-radius:24px; padding:32px 24px; text-align:center;
+    box-shadow: 0 8px 28px rgba(70,49,42,.08); }
+  img { width:76px; height:76px; border-radius:18px; }
+  h1 { font-size:28px; font-weight:600; letter-spacing:-.01em; margin:14px 0 4px; }
   p { color:var(--muted); margin:6px 0 18px; }
-  input { width:100%; font-size:20px; padding:14px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--text); text-align:center; }
-  button, a.button { display:block; width:100%; margin-top:14px; font-size:18px; font-weight:600; padding:14px; min-height:52px; border-radius:12px; border:0;
-    background:var(--accent); color:#fff; text-decoration:none; }
-  @media (prefers-color-scheme: dark) { button, a.button { color:#0b1a30; } }
+  input { width:100%; font:inherit; font-size:20px; padding:14px; border-radius:14px; border:1px solid var(--line); background:var(--field); color:var(--text); text-align:center; }
+  button, a.button { display:block; width:100%; margin-top:14px; font:inherit; font-size:19px; font-weight:600; padding:13px; min-height:52px; border-radius:999px; border:0;
+    background:var(--accent); color:var(--on); text-decoration:none; cursor:pointer; }
   button:disabled { opacity:.6; }
-  .error { color:var(--bad); min-height:24px; margin:12px 0 0; font-weight:600; }
-  code { background:var(--bg); padding:2px 6px; border-radius:6px; font-size:15px; }
+  .error { color:var(--bad); min-height:26px; margin:12px 0 0; font-weight:600; }
+  code { background:var(--bg); padding:2px 6px; border-radius:6px; font: 15px ui-monospace, Menlo, monospace; }
 </style>`;
 
 /** The passcode screen. */
