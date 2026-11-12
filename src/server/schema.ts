@@ -108,6 +108,19 @@ export const SCHEMA: string[] = [
      src_direct INTEGER,
      is_sample INTEGER NOT NULL DEFAULT 0)`,
 
+  // Ad campaign numbers typed in by hand from Etsy Ads, one row per week.
+  // listing_id 0 = the whole shop; any other number = one advertised listing.
+  `CREATE TABLE IF NOT EXISTS ad_stats (
+     week_start TEXT NOT NULL,
+     listing_id INTEGER NOT NULL DEFAULT 0,
+     views INTEGER,
+     clicks INTEGER,
+     orders INTEGER,
+     revenue_cents INTEGER,
+     spend_cents INTEGER,
+     is_sample INTEGER NOT NULL DEFAULT 0,
+     PRIMARY KEY (week_start, listing_id))`,
+
   // Costs typed in by hand.
   `CREATE TABLE IF NOT EXISTS costs (
      id INTEGER PRIMARY KEY AUTOINCREMENT,

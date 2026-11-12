@@ -3,9 +3,12 @@
 // Database rows in -> worked-out numbers and suggestions out.
 // ---------------------------------------------------------------------------
 
+import { breakEvenRoas, buildAdsWeeks } from "../shared/ads";
+import { dayKey } from "../shared/dates";
+import { classifyLedgerEntry } from "../shared/fees";
 import { computeMetrics } from "../shared/metrics";
 import { buildSuggestions, pickNextSteps } from "../shared/suggestions";
-import type { Briefing, DashboardData, SyncStatus } from "../shared/types";
+import type { AdsData, Briefing, DashboardData, SyncStatus } from "../shared/types";
 import { loadAll, type AllData } from "./db";
 import type { Env } from "./env";
 
@@ -56,7 +59,22 @@ export function buildDashboardFrom(all: AllData, env: Env, now: number): Dashboa
     settings: all.settings,
   });
 
+  // Ad campaigns: spend from Etsy's bill (or typed in), the rest typed in from Etsy Ads.
+  const adEntries = all.ledger
+    .filter((e) => classifyLedgerEntry(e) === "ads")
+    .map((e) => ({ day: dayKey(e.createdTs, all.settings.timezone), amountCents: e.amountCents }));
+  // Roughly how much of each sale Etsy keeps. Falls back to 20% before there are any sales.
+  const feeSharePct = metrics.money.revenueCents > 0 ? Math.round((metrics.money.feesCents / metrics.money.revenueCents) * 1000) / 10 : 20;
+  const ads: AdsData = {
+    weeks: buildAdsWeeks(adEntries, all.weekly, all.adStats),
+    listingStats: all.adStats.filter((a) => a.listingId !== 0),
+    feeSharePct,
+    breakEvenRoas: breakEvenRoas(feeSharePct),
+  };
+
   const suggestions = buildSuggestions({
+    ads,
+    titles: new Map(all.listings.map((l) => [l.listingId, l.title])),
     today: metrics.today,
     listings,
     rows: metrics.listings,
@@ -91,6 +109,7 @@ export function buildDashboardFrom(all: AllData, env: Env, now: number): Dashboa
     dataNotes: metrics.dataNotes,
     briefing,
     trafficSources: metrics.trafficSources,
+    ads,
   };
 }
 

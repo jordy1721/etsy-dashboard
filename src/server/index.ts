@@ -13,13 +13,14 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { CsvError, parseStatsCsv } from "../shared/csv";
 import { isDay, weekStart } from "../shared/dates";
 import { parseDollarsToCents } from "../shared/money";
-import type { CostKind, Settings, WeeklyManual } from "../shared/types";
+import type { AdStat } from "../shared/ads";
+import type { CostKind, Settings } from "../shared/types";
 import {
   SESSION_COOKIE, SESSION_SECONDS, checkRateLimit, clearAttempts, createSessionValue, passcodeMatches, recordFailedAttempt, verifySessionValue,
 } from "./auth";
 import { maybeWriteBriefing } from "./briefing";
 import { REFRESH_COOLDOWN_SECONDS, buildDashboard } from "./dashboard";
-import { addCost, deleteCost, deleteTokens, deleteWeekly, ensureReady, getMeta, saveDailyStats, saveSettings, saveWeekly, setMeta } from "./db";
+import { addCost, deleteAdWeek, deleteCost, deleteTokens, ensureReady, getMeta, saveAdWeek, saveDailyStats, saveSettings, saveWeeklyPart, setMeta } from "./db";
 import { nowSeconds, type Env } from "./env";
 import { buildAuthUrl, exchangeCode, pkceChallenge, randomToken } from "./etsy/oauth";
 import { runSync } from "./etsy/sync";
@@ -203,36 +204,85 @@ app.post("/api/refresh", async (c) => {
 });
 
 // ---- Manual entries ---------------------------------------------------------
+// Weekly visits and traffic sources. (Ad spend is saved from the Ads screen and is kept as it is.)
 app.post("/api/weekly", async (c) => {
   const body = await readJson(c);
   if (!isDay(body.weekStart)) return c.json({ error: "Pick a week first." }, 400);
 
-  const ads = optionalMoney(body.adsSpend);
-  if (ads === "bad") return c.json({ error: "Ad spend must be an amount like 12.50" }, 400);
   const counts: Record<string, number | null> = {};
   for (const key of ["visits", "srcSearch", "srcAds", "srcEtsyOther", "srcSocial", "srcDirect"]) {
     const value = optionalCount(body[key]);
     if (value === "bad") return c.json({ error: "Visits must be whole numbers (or left empty)." }, 400);
     counts[key] = value;
   }
-  const row: WeeklyManual = {
-    weekStart: weekStart(body.weekStart), // snap any day to its Monday
-    adsSpendCents: ads,
+  // weekStart() snaps any day to its Monday.
+  await saveWeeklyPart(c.env.DB, weekStart(body.weekStart), {
     visits: counts.visits ?? null,
     srcSearch: counts.srcSearch ?? null,
     srcAds: counts.srcAds ?? null,
     srcEtsyOther: counts.srcEtsyOther ?? null,
     srcSocial: counts.srcSocial ?? null,
     srcDirect: counts.srcDirect ?? null,
-  };
-  await saveWeekly(c.env.DB, row);
+  });
   return c.json({ ok: true });
 });
 
 app.delete("/api/weekly/:weekStart", async (c) => {
   const day = c.req.param("weekStart");
   if (!isDay(day)) return c.json({ error: "Unknown week." }, 400);
-  await deleteWeekly(c.env.DB, day);
+  await saveWeeklyPart(c.env.DB, day, { visits: null, srcSearch: null, srcAds: null, srcEtsyOther: null, srcSocial: null, srcDirect: null });
+  return c.json({ ok: true });
+});
+
+// ---- Ad campaigns (typed in from Etsy Ads) -----------------------------------
+app.post("/api/ads", async (c) => {
+  const body = await readJson(c);
+  if (!isDay(body.weekStart)) return c.json({ error: "Pick a week first." }, 400);
+  const week = weekStart(body.weekStart);
+
+  // Read one set of ad numbers (the whole shop, or one listing).
+  const readRow = (src: Record<string, unknown>, listingId: number): AdStat | string => {
+    const views = optionalCount(src.views);
+    const clicks = optionalCount(src.clicks);
+    const orders = optionalCount(src.orders);
+    const revenue = optionalMoney(src.revenue);
+    const spend = optionalMoney(src.spend);
+    if (views === "bad" || clicks === "bad" || orders === "bad") return "Views, clicks and orders must be whole numbers (or left empty).";
+    if (revenue === "bad" || spend === "bad") return "Amounts must look like 12.50 (or be left empty).";
+    if (views !== null && clicks !== null && clicks > views) return "Clicks cannot be higher than views. Check the two numbers.";
+    if (clicks !== null && orders !== null && orders > clicks) return "Orders cannot be higher than clicks. Check the two numbers.";
+    return { weekStart: week, listingId, views, clicks, orders, revenueCents: revenue, spendCents: spend };
+  };
+
+  const shop = readRow(body, 0);
+  if (typeof shop === "string") return c.json({ error: shop }, 400);
+  const shopSpend = shop.spendCents;
+  shop.spendCents = null; // the whole-shop spend is stored with the weekly numbers
+
+  const rows: AdStat[] = [];
+  const hasNumbers = (r: AdStat) => [r.views, r.clicks, r.orders, r.revenueCents, r.spendCents].some((v) => v !== null);
+  if (hasNumbers(shop)) rows.push(shop);
+
+  const listings = Array.isArray(body.listings) ? (body.listings as unknown[]).slice(0, 200) : [];
+  for (const item of listings) {
+    if (!item || typeof item !== "object") continue;
+    const src = item as Record<string, unknown>;
+    const listingId = Number(src.listingId);
+    if (!Number.isInteger(listingId) || listingId <= 0) return c.json({ error: "Unknown listing." }, 400);
+    const row = readRow(src, listingId);
+    if (typeof row === "string") return c.json({ error: row }, 400);
+    if (hasNumbers(row)) rows.push(row);
+  }
+  if (rows.length === 0 && shopSpend === null) return c.json({ error: "Type at least one number for this week." }, 400);
+
+  await saveAdWeek(c.env.DB, week, shopSpend, rows);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/ads/:weekStart", async (c) => {
+  const day = c.req.param("weekStart");
+  if (!isDay(day)) return c.json({ error: "Unknown week." }, 400);
+  await deleteAdWeek(c.env.DB, day);
   return c.json({ ok: true });
 });
 

@@ -10,6 +10,7 @@ import { loadDashboard } from "./api";
 import { Enso, ICONS, Icon, timeAgo } from "./components";
 import { useDevice, useTheme } from "./device";
 import { Scenery } from "./Scenery";
+import { Ads } from "./screens/Ads";
 import { Fix } from "./screens/Fix";
 import { Listings } from "./screens/Listings";
 import { Money } from "./screens/Money";
@@ -18,13 +19,14 @@ import { Overview } from "./screens/Overview";
 import { Sales } from "./screens/Sales";
 import { Settings } from "./screens/Settings";
 
-export type Tab = "home" | "sales" | "listings" | "money" | "fix" | "next" | "settings";
+export type Tab = "home" | "sales" | "listings" | "ads" | "money" | "fix" | "next" | "settings";
 
 /** The screens, in menu order. `short` is the label under the phone's tab bar icons. */
 const TABS: { id: Tab; label: string; short: string; icon: string }[] = [
   { id: "home", label: "Dashboard", short: "Today", icon: ICONS.home },
   { id: "sales", label: "Sales", short: "Sales", icon: ICONS.sales },
   { id: "listings", label: "Listings", short: "Listings", icon: ICONS.listings },
+  { id: "ads", label: "Ads", short: "Ads", icon: ICONS.ads },
   { id: "money", label: "Money", short: "Money", icon: ICONS.money },
   { id: "fix", label: "What to fix", short: "Fix", icon: ICONS.fix },
   { id: "next", label: "Next steps", short: "Next", icon: ICONS.next },
@@ -35,6 +37,7 @@ const HEADINGS: Record<Tab, { eyebrow: string; title: string; lede: string }> = 
   home: { eyebrow: "Shop overview", title: "Welcome back.", lede: "Here's how your shop is performing." },
   sales: { eyebrow: "Orders", title: "Sales", lede: "Every sale, with what you really kept." },
   listings: { eyebrow: "Products", title: "Listings", lede: "What is working, and what is not." },
+  ads: { eyebrow: "Etsy Ads", title: "Ad campaigns", lede: "What your ads cost, and what they bring back." },
   money: { eyebrow: "Profit", title: "Money", lede: "Where the money comes from, and where it goes." },
   fix: { eyebrow: "To do", title: "What to fix", lede: "Ranked, most important first." },
   next: { eyebrow: "This week", title: "Next steps", lede: "The three most valuable things to do." },
@@ -155,6 +158,7 @@ export function App() {
             {tab === "home" && <Overview data={data} go={go} />}
             {tab === "sales" && <Sales data={data} />}
             {tab === "listings" && <Listings data={data} />}
+            {tab === "ads" && <Ads data={data} reload={reload} />}
             {tab === "money" && <Money data={data} />}
             {tab === "fix" && <Fix data={data} />}
             {tab === "next" && <NextSteps data={data} go={go} />}

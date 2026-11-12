@@ -24,7 +24,7 @@ const sql: string[] = [];
 
 // Tables first (as single lines), then empty everything that holds data.
 for (const statement of SCHEMA) sql.push(statement.replace(/\s+/g, " ") + ";");
-for (const table of [...ETSY_TABLES, "weekly_manual", "costs", "daily_stats", "meta", "oauth_tokens", "login_attempts"]) sql.push(`DELETE FROM ${table};`);
+for (const table of [...ETSY_TABLES, "weekly_manual", "costs", "ad_stats", "daily_stats", "meta", "oauth_tokens", "login_attempts"]) sql.push(`DELETE FROM ${table};`);
 
 for (const l of sample.listings) {
   sql.push(
@@ -60,7 +60,13 @@ for (const c of sample.costs) {
   sql.push(`INSERT INTO costs (day, kind, label, amount_cents, is_sample) VALUES ${row(c.day, c.kind, c.label, c.amountCents, 1)};`);
 }
 sql.push(`INSERT INTO meta (key, value) VALUES ${row("shop", JSON.stringify(sample.shop))};`);
+for (const a of sample.adStats) {
+  sql.push(
+    `INSERT INTO ad_stats (week_start, listing_id, views, clicks, orders, revenue_cents, spend_cents, is_sample) VALUES ${row(a.weekStart, a.listingId, a.views, a.clicks, a.orders, a.revenueCents, a.spendCents, 1)};`,
+  );
+}
 sql.push(`INSERT INTO meta (key, value) VALUES ${row("data_mode", "sample")};`);
+sql.push(`INSERT INTO meta (key, value) VALUES ${row("sample_version", "2")};`);
 
 mkdirSync(".wrangler", { recursive: true });
 writeFileSync(".wrangler/seed.sql", sql.join("\n") + "\n");

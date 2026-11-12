@@ -7,9 +7,10 @@
 // Higher score = more important. The list is sorted by score.
 // ---------------------------------------------------------------------------
 
+import { MIN_CLICKS_TO_JUDGE, adsByListing, totalAds, weeksInRange } from "./ads";
 import { formatAud } from "./money";
 import { STATUS_RULES } from "./status";
-import type { Listing, ListingRow, MoneySummary, PeriodSummary, SaleRow, Settings, Suggestion, WeeklyManual } from "./types";
+import type { AdsData, Listing, ListingRow, MoneySummary, PeriodSummary, SaleRow, Settings, Suggestion, WeeklyManual } from "./types";
 
 export interface SuggestionContext {
   today: string;
@@ -23,6 +24,10 @@ export interface SuggestionContext {
   weekly: WeeklyManual[];
   reviewCount: number;
   settings: Settings;
+  /** Ad campaign numbers (typed in). Optional so older callers and tests still work. */
+  ads?: AdsData;
+  /** Listing titles by ID, for naming advertised listings. */
+  titles?: Map<number, string>;
 }
 
 /** Shorten long listing titles so cards stay readable on a phone. */
@@ -264,6 +269,83 @@ export function ruleAdsEatingProfit(ctx: SuggestionContext): Suggestion[] {
   ];
 }
 
+// --- Rule: ads bring back less than they cost (last 4 weeks) ---------------
+export function ruleAdsLosingMoney(ctx: SuggestionContext): Suggestion[] {
+  if (!ctx.ads) return [];
+  const t = totalAds(weeksInRange(ctx.ads.weeks, ctx.today, 4), ctx.ads.feeSharePct);
+  // Needs real spend and typed-in ad revenue, otherwise there is nothing to compare.
+  if (t.spendCents < 500 || t.roas === null || t.profitCents === null || t.roas >= ctx.ads.breakEvenRoas) return [];
+  return [
+    {
+      id: "ads-losing-money",
+      rule: "ads-losing-money",
+      score: 92,
+      title: `Your ads lost ${formatAud(-t.profitCents)} in the last 4 weeks.`,
+      what: "Open Etsy Ads and turn off advertising for every listing marked Losing money on the Ads screen. Drop the daily budget to the minimum for the rest.",
+      consider: `For every A$1.00 of ads you got A$${t.roas.toFixed(2)} of sales back, and Etsy still takes its fees from that. You need A$${ctx.ads.breakEvenRoas.toFixed(2)} back just to break even.`,
+      expect: "Fewer views and maybe fewer sales, but the sales you keep will be profitable. Check again after two weeks.",
+      numbers: `Last 4 weeks: ad spend ${formatAud(t.spendCents)}, sales from ads ${formatAud(t.revenueCents ?? 0)}, ROAS ${t.roas.toFixed(2)}, break-even ROAS ${ctx.ads.breakEvenRoas.toFixed(2)}.`,
+    },
+  ];
+}
+
+// --- Rule: an advertised listing gets clicks but no orders -----------------
+export function ruleAdListingNoOrders(ctx: SuggestionContext): Suggestion[] {
+  if (!ctx.ads) return [];
+  return adsByListing(ctx.ads.listingStats, ctx.titles ?? new Map<number, string>(), ctx.ads.feeSharePct)
+    .filter((l) => (l.clicks ?? 0) >= MIN_CLICKS_TO_JUDGE && (l.orders ?? 0) === 0)
+    .map((l) => ({
+      id: `ad-no-orders-${l.listingId}`,
+      rule: "ad-no-orders",
+      score: 84,
+      listingId: l.listingId,
+      title: `Ads for "${shortTitle(l.title)}" get clicks but no orders.`,
+      what: "Turn off ads for this listing in Etsy Ads. Fix the listing first (price, first photo, description), then test ads again.",
+      consider: "People clicked, so the ad works. They did not buy, so the listing page is where they change their mind.",
+      expect: "You stop paying for clicks that do not convert. Nothing is lost: it was earning nothing from ads.",
+      numbers: `${l.clicks} ad clicks, 0 orders, ${formatAud(l.spendCents)} spent (rule: ${MIN_CLICKS_TO_JUDGE}+ clicks with 0 orders).`,
+    }));
+}
+
+// --- Rule: an advertised listing is shown a lot but rarely clicked ---------
+export function ruleAdLowClickRate(ctx: SuggestionContext): Suggestion[] {
+  if (!ctx.ads) return [];
+  return adsByListing(ctx.ads.listingStats, ctx.titles ?? new Map<number, string>(), ctx.ads.feeSharePct)
+    .filter((l) => (l.views ?? 0) >= 300 && l.clickRatePct !== null && l.clickRatePct < 1)
+    .map((l) => ({
+      id: `ad-low-click-rate-${l.listingId}`,
+      rule: "ad-low-click-rate",
+      score: 54,
+      listingId: l.listingId,
+      title: `Few people click the ad for "${shortTitle(l.title)}".`,
+      what: "Change the first photo and the first words of the title. In search results that is all a shopper sees of your ad.",
+      consider: "A low click rate costs little directly (you pay per click), but it means the ad is shown to people who scroll past.",
+      expect: "A click rate above 1% is a reasonable first target. Change one thing and compare after a week.",
+      numbers: `${l.views} ad views, ${l.clicks ?? 0} clicks, click rate ${l.clickRatePct?.toFixed(1)}% (rule: 300+ views and under 1%).`,
+    }));
+}
+
+// --- Rule: paying for ads but the ad numbers were never typed in -----------
+export function ruleAdsNoNumbers(ctx: SuggestionContext): Suggestion[] {
+  if (!ctx.ads) return [];
+  const recent = weeksInRange(ctx.ads.weeks, ctx.today, 4);
+  const blind = recent.filter((w) => w.spendCents > 0 && w.clicks === null && w.revenueCents === null);
+  if (blind.length === 0) return [];
+  const spend = blind.reduce((n, w) => n + w.spendCents, 0);
+  return [
+    {
+      id: "ads-no-numbers",
+      rule: "ads-no-numbers",
+      score: 34,
+      title: `You paid ${formatAud(spend)} for ads with no results typed in.`,
+      what: "Open Etsy > Marketing > Etsy Ads, and copy the views, clicks, orders and revenue for each week into the Ads screen here.",
+      consider: "Etsy does not share ad results through its API. Without them this app can see what ads cost, but not what they earned.",
+      expect: "Two minutes a week. In return you see if ads make or lose money, per listing.",
+      numbers: `${blind.length} week${blind.length === 1 ? "" : "s"} in the last 4 with ad spend but no clicks or revenue entered.`,
+    },
+  ];
+}
+
 // --- Rule: no weekly visits typed in ---------------------------------------
 export function ruleMissingVisits(ctx: SuggestionContext): Suggestion[] {
   if (ctx.thisWeek.visits !== null) return [];
@@ -284,6 +366,8 @@ export function ruleMissingVisits(ctx: SuggestionContext): Suggestion[] {
 /** Every rule, in one list. Add new rules here. */
 export const ALL_RULES: ((ctx: SuggestionContext) => Suggestion[])[] = [
   ruleLowProfit,
+  ruleAdsLosingMoney,
+  ruleAdListingNoOrders,
   ruleAdsEatingProfit,
   ruleDeepDiscount,
   ruleViewsNoSales,
@@ -293,6 +377,8 @@ export const ALL_RULES: ((ctx: SuggestionContext) => Suggestion[])[] = [
   ruleMissingProduct,
   ruleFewTags,
   ruleTagsRepeatTitle,
+  ruleAdLowClickRate,
+  ruleAdsNoNumbers,
   ruleMissingVisits,
 ];
 
@@ -303,7 +389,7 @@ export function buildSuggestions(ctx: SuggestionContext): Suggestion[] {
 }
 
 /** Rules that give the same kind of advice share a topic. */
-const TOPIC: Record<string, string> = { "low-profit": "price", "deep-discount": "price" };
+const TOPIC: Record<string, string> = { "low-profit": "price", "deep-discount": "price", "ads-losing-money": "ads", "ads-eating-profit": "ads", "ad-no-orders": "ads" };
 
 /**
  * The 3 most valuable actions this week.

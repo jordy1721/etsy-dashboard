@@ -9,6 +9,7 @@
 
 import { addDays, dayKey, dayRange, weekStart } from "../shared/dates";
 import { percentOf } from "../shared/money";
+import type { AdStat } from "../shared/ads";
 import type { Cost, LedgerEntry, Listing, Receipt, ShopInfo, Snapshot, WeeklyManual } from "../shared/types";
 
 export interface SampleData {
@@ -19,6 +20,7 @@ export interface SampleData {
   ledger: LedgerEntry[];
   weekly: WeeklyManual[];
   costs: Omit<Cost, "id">[];
+  adStats: AdStat[];
 }
 
 const TZ = "Australia/Sydney";
@@ -258,6 +260,26 @@ export function buildSampleData(nowSeconds: number): SampleData {
     { day: addDays(openDay, 2), kind: "tool", label: "Thumbnail template", amountCents: 300 },
   ];
 
+  // Ad campaign numbers, as if read off Etsy Ads. [views, clicks, orders, revenue] per week.
+  const shopAds: Record<number, [number, number, number, number]> = { 1: [310, 9, 1, 390], 3: [520, 17, 1, 1200], 4: [410, 12, 1, 390] };
+  // Per listing: [listing index, share of that week's views/clicks, orders, revenue, spend]
+  const listingAds: Record<number, [number, number, number, number, number][]> = {
+    3: [[0, 0.5, 1, 1200, 290], [1, 0.35, 0, 0, 180], [2, 0.15, 0, 0, 80]],
+    4: [[0, 0.45, 0, 0, 230], [1, 0.4, 1, 390, 200], [2, 0.15, 0, 0, 90]],
+  };
+  const adStats: AdStat[] = [];
+  weekStarts.forEach((ws, i) => {
+    const shopRow = shopAds[i];
+    if (!shopRow) return;
+    const [views, clicks, orders, revenue] = shopRow;
+    adStats.push({ weekStart: ws, listingId: 0, views, clicks, orders, revenueCents: revenue, spendCents: null });
+    for (const [index, share, o, rev, spend] of listingAds[i] ?? []) {
+      const seed = LISTING_SEEDS[index];
+      if (!seed) continue;
+      adStats.push({ weekStart: ws, listingId: seed.listingId, views: Math.round(views * share), clicks: Math.round(clicks * share), orders: o, revenueCents: rev, spendCents: spend });
+    }
+  });
+
   const shop: ShopInfo = {
     shopId: 68560946,
     shopName: "AllYourBuys",
@@ -270,5 +292,5 @@ export function buildSampleData(nowSeconds: number): SampleData {
     activeListings: listings.length,
   };
 
-  return { shop, listings, snapshots, receipts, ledger, weekly, costs };
+  return { shop, listings, snapshots, receipts, ledger, weekly, costs, adStats };
 }

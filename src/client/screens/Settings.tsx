@@ -93,7 +93,7 @@ function StatusCard({ data, reload }: { data: DashboardData; reload: () => Promi
 }
 
 // ---- Weekly numbers: ads spend, visits, traffic sources ---------------------
-const EMPTY_WEEK = { adsSpend: "", visits: "", srcSearch: "", srcAds: "", srcEtsyOther: "", srcSocial: "", srcDirect: "" };
+const EMPTY_WEEK = { visits: "", srcSearch: "", srcAds: "", srcEtsyOther: "", srcSocial: "", srcDirect: "" };
 
 function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promise<void> }) {
   const thisMonday = weekStart(data.today);
@@ -110,7 +110,6 @@ function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promi
     setForm(
       row
         ? {
-            adsSpend: dollars(row.adsSpendCents),
             visits: numText(row.visits),
             srcSearch: numText(row.srcSearch),
             srcAds: numText(row.srcAds),
@@ -140,7 +139,7 @@ function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promi
   };
 
   const remove = async (w: WeeklyManual) => {
-    if (!confirm(`Delete the numbers for the week of ${shortDay(w.weekStart)}?`)) return;
+    if (!confirm(`Delete the visit numbers for the week of ${shortDay(w.weekStart)}?`)) return;
     try {
       await api(`/api/weekly/${w.weekStart}`, { method: "DELETE" });
       await reload();
@@ -149,11 +148,11 @@ function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promi
     }
   };
 
-  const saved = [...data.weekly].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  const saved = [...data.weekly].filter((w) => w.visits !== null || w.srcSearch !== null || w.srcAds !== null || w.srcEtsyOther !== null || w.srcSocial !== null || w.srcDirect !== null).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
   return (
     <Card title="Weekly numbers">
       <p class="muted small" style="margin-bottom:10px">
-        Read these off Etsy &gt; Shop Manager &gt; Stats (and Marketing &gt; Etsy Ads for spend). Leave a box empty if you do not know it.
+        Read these off Etsy &gt; Shop Manager &gt; Stats. Leave a box empty if you do not know it. Ad spend and ad results are typed in on the Ads screen.
       </p>
       <form class="stack" onSubmit={(e) => void save(e)}>
         <label class="field">
@@ -164,16 +163,10 @@ function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promi
             ))}
           </select>
         </label>
-        <div class="grid2">
-          <label class="field">
-            Etsy Ads spend (A$)
-            <input type="text" inputMode="decimal" placeholder="0.00" value={form.adsSpend} onInput={set("adsSpend")} />
-          </label>
-          <label class="field">
-            Shop visits
-            <input type="text" inputMode="numeric" placeholder="0" value={form.visits} onInput={set("visits")} />
-          </label>
-        </div>
+        <label class="field">
+          Shop visits
+          <input type="text" inputMode="numeric" placeholder="0" value={form.visits} onInput={set("visits")} />
+        </label>
         <details>
           <summary>Where visits came from (optional)</summary>
           <div class="grid2" style="margin-top:6px">
@@ -198,7 +191,7 @@ function WeeklyCard({ data, reload }: { data: DashboardData; reload: () => Promi
               <button class="grow" style="border:0;background:none;text-align:left;padding:0;min-height:44px" onClick={() => setWeek(w.weekStart)} disabled={!weeks.includes(w.weekStart)}>
                 <div style="font-weight:600">{shortDay(w.weekStart)} – {shortDay(addDays(w.weekStart, 6))}</div>
                 <div class="muted small">
-                  Ads {w.adsSpendCents === null ? "–" : formatAud(w.adsSpendCents)} · Visits {w.visits ?? "–"}
+                  Visits {w.visits ?? "–"}
                 </div>
               </button>
               <button class="btn danger smallbtn" aria-label={`Delete week of ${shortDay(w.weekStart)}`} onClick={() => void remove(w)}>

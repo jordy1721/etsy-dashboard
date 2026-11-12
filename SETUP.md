@@ -120,8 +120,8 @@ Note: the Home Screen app keeps its own login, separate from Safari. Typing the 
 Etsy does not share visits, traffic sources or ad spend through its API. Once a week:
 
 1. On Etsy open **Shop Manager > Stats**. Note the visits (and where they came from).
-2. If you run Etsy Ads, open **Marketing > Etsy Ads** and note the spend.
-3. In the dashboard tap the gear icon and type them under **Weekly numbers**.
+2. In the dashboard tap the gear icon and type the visits under **Weekly numbers**.
+3. If you run Etsy Ads, open **Marketing > Etsy Ads** on Etsy, set the dates to one week (Monday to Sunday), and copy the views, clicks, orders, revenue and spend into the dashboard's **Ads** screen. Adding the numbers per listing shows which ads earn and which lose money.
 
 Numbers that depend on what you type show a small **estimated** tag. Numbers that cannot be shown say **missing data**. Nothing is made up.
 

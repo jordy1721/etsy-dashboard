@@ -26,10 +26,11 @@ Until Etsy is connected the app shows invented **SAMPLE DATA** (with a banner sa
 1. **Today** - last 7 days vs the 7 days before: revenue, orders, net profit, spend, views, conversion, a trend chart, and the single most important thing to do next.
 2. **Sales** - every sale with price paid, discount, fees, profit and country. Filter by date and listing.
 3. **Listings** - views, favourites, sales, discount depth and one status label per listing.
-4. **Money** - revenue, fees, ads, costs, net profit, break-even, profit per sale, probable ad fees.
-5. **Fix** - the full ranked to-do list, each with the numbers behind it.
-6. **Next** - the 3 most valuable actions this week (What to do / What to consider / What to expect).
-7. **Gear icon** - manual entries (ad spend, visits, costs), minimum profit, Stats CSV upload, Etsy connection and refresh.
+4. **Ads** - laid out like Etsy's Ads page: views, clicks, orders, revenue, spend and ROAS, a chart per week, and a table of advertised listings. Ad results are typed in; spend comes from Etsy's bill when it shows it.
+5. **Money** - revenue, fees, ads, costs, net profit, break-even, profit per sale, probable ad fees.
+6. **Fix** - the full ranked to-do list, each with the numbers behind it.
+7. **Next** - the 3 most valuable actions this week (What to do / What to consider / What to expect).
+8. **Gear icon** - manual entries (visits, costs), minimum profit, Stats CSV upload, Etsy connection and refresh.
 
 ## Safety
 

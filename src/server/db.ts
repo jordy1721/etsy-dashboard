@@ -5,6 +5,7 @@
 // round trips (the free Cloudflare plan limits how many you can make).
 // ---------------------------------------------------------------------------
 
+import type { AdStat } from "../shared/ads";
 import { DEFAULT_SETTINGS } from "../shared/types";
 import type {
   Cost, CostKind, DailyStat, LedgerEntry, Listing, Receipt, Review, Settings, ShopInfo, Snapshot, Transaction, WeeklyManual,
@@ -16,12 +17,18 @@ import { ETSY_TABLES, SCHEMA } from "./schema";
 /** Remembered while this copy of the Worker stays warm, so we only check once. */
 let ready = false;
 
+/** Raise this number when the sample data changes, so sites still on sample data get the new version. */
+const SAMPLE_VERSION = "2";
+
 /** Make sure the tables exist, and load sample data into a brand-new database. */
 export async function ensureReady(env: Env): Promise<void> {
   if (ready) return;
   await env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql)));
-  const mode = await env.DB.prepare(`SELECT value FROM meta WHERE key = 'data_mode'`).first<{ value: string }>();
-  if (!mode) await seedSampleData(env.DB, nowSeconds());
+  const rows = await env.DB.prepare(`SELECT key, value FROM meta WHERE key IN ('data_mode', 'sample_version')`).all<{ key: string; value: string }>();
+  const meta = new Map(rows.results.map((r) => [r.key, r.value]));
+  const mode = meta.get("data_mode");
+  // Brand-new database, or still on an older set of sample data: load the current sample data.
+  if (!mode || (mode === "sample" && meta.get("sample_version") !== SAMPLE_VERSION)) await seedSampleData(env.DB, nowSeconds());
   ready = true;
 }
 
@@ -127,6 +134,7 @@ export function clearSampleStatements(db: D1Database): D1PreparedStatement[] {
     ...ETSY_TABLES.map((t) => db.prepare(`DELETE FROM ${t}`)),
     db.prepare(`DELETE FROM weekly_manual WHERE is_sample = 1`),
     db.prepare(`DELETE FROM costs WHERE is_sample = 1`),
+    db.prepare(`DELETE FROM ad_stats WHERE is_sample = 1`),
   ];
 }
 
@@ -143,8 +151,10 @@ export async function seedSampleData(db: D1Database, now: number): Promise<void>
     ...sample.costs.map((c) =>
       db.prepare(`INSERT INTO costs (day, kind, label, amount_cents, is_sample) VALUES (?, ?, ?, ?, 1)`).bind(c.day, c.kind, c.label, c.amountCents),
     ),
+    ...sample.adStats.map((a) => adStatStatement(db, a, true)),
     metaStatement(db, "shop", JSON.stringify(sample.shop)),
     metaStatement(db, "data_mode", "sample"),
+    metaStatement(db, "sample_version", SAMPLE_VERSION),
   ];
   await runBatches(db, statements);
 }
@@ -165,12 +175,69 @@ export function weeklyStatement(db: D1Database, w: WeeklyManual, isSample = fals
     .bind(w.weekStart, w.adsSpendCents, w.visits, w.srcSearch, w.srcAds, w.srcEtsyOther, w.srcSocial, w.srcDirect, isSample ? 1 : 0);
 }
 
-export async function saveWeekly(db: D1Database, w: WeeklyManual): Promise<void> {
-  await weeklyStatement(db, w).run();
+const EMPTY_WEEK: Omit<WeeklyManual, "weekStart"> = {
+  adsSpendCents: null, visits: null, srcSearch: null, srcAds: null, srcEtsyOther: null, srcSocial: null, srcDirect: null,
+};
+
+async function getWeekly(db: D1Database, weekStartDay: string): Promise<WeeklyManual> {
+  const r = await db.prepare(`SELECT * FROM weekly_manual WHERE week_start = ?`).bind(weekStartDay).first<Row>();
+  if (!r) return { weekStart: weekStartDay, ...EMPTY_WEEK };
+  return {
+    weekStart: weekStartDay,
+    adsSpendCents: numOrNull(r.ads_spend_cents),
+    visits: numOrNull(r.visits),
+    srcSearch: numOrNull(r.src_search),
+    srcAds: numOrNull(r.src_ads),
+    srcEtsyOther: numOrNull(r.src_etsy_other),
+    srcSocial: numOrNull(r.src_social),
+    srcDirect: numOrNull(r.src_direct),
+  };
 }
 
-export async function deleteWeekly(db: D1Database, weekStartDay: string): Promise<void> {
-  await db.prepare(`DELETE FROM weekly_manual WHERE week_start = ?`).bind(weekStartDay).run();
+/** A week with nothing in it is removed, so the list stays tidy. */
+function dropEmptyWeek(db: D1Database, weekStartDay: string): D1PreparedStatement {
+  return db
+    .prepare(
+      `DELETE FROM weekly_manual WHERE week_start = ? AND ads_spend_cents IS NULL AND visits IS NULL AND src_search IS NULL
+         AND src_ads IS NULL AND src_etsy_other IS NULL AND src_social IS NULL AND src_direct IS NULL`,
+    )
+    .bind(weekStartDay);
+}
+
+/**
+ * Save part of a week's numbers and keep the rest.
+ * The Settings screen saves visits; the Ads screen saves ad spend. Neither wipes the other.
+ */
+export async function saveWeeklyPart(db: D1Database, weekStartDay: string, part: Partial<Omit<WeeklyManual, "weekStart">>): Promise<void> {
+  const merged = { ...(await getWeekly(db, weekStartDay)), ...part };
+  await db.batch([weeklyStatement(db, merged), dropEmptyWeek(db, weekStartDay)]);
+}
+
+// ---- Ad campaign numbers ----
+
+export function adStatStatement(db: D1Database, a: AdStat, isSample = false): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO ad_stats (week_start, listing_id, views, clicks, orders, revenue_cents, spend_cents, is_sample) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (week_start, listing_id) DO UPDATE SET views = excluded.views, clicks = excluded.clicks, orders = excluded.orders,
+         revenue_cents = excluded.revenue_cents, spend_cents = excluded.spend_cents, is_sample = excluded.is_sample`,
+    )
+    .bind(a.weekStart, a.listingId, a.views, a.clicks, a.orders, a.revenueCents, a.spendCents, isSample ? 1 : 0);
+}
+
+/** Replace everything typed for one week of ads (whole shop + each listing) and its ad spend. */
+export async function saveAdWeek(db: D1Database, weekStartDay: string, spendCents: number | null, rows: AdStat[]): Promise<void> {
+  const merged = { ...(await getWeekly(db, weekStartDay)), adsSpendCents: spendCents };
+  await db.batch([
+    db.prepare(`DELETE FROM ad_stats WHERE week_start = ?`).bind(weekStartDay),
+    ...rows.map((r) => adStatStatement(db, r)),
+    weeklyStatement(db, merged),
+    dropEmptyWeek(db, weekStartDay),
+  ]);
+}
+
+export async function deleteAdWeek(db: D1Database, weekStartDay: string): Promise<void> {
+  await saveAdWeek(db, weekStartDay, null, []);
 }
 
 export async function addCost(db: D1Database, c: { day: string; kind: CostKind; label: string; amountCents: number }): Promise<void> {
@@ -248,6 +315,7 @@ export interface AllData {
   weekly: WeeklyManual[];
   costs: Cost[];
   dailyStats: DailyStat[];
+  adStats: AdStat[];
   settings: Settings;
   meta: Map<string, string>;
   etsyConnected: boolean;
@@ -293,6 +361,7 @@ export async function loadAll(db: D1Database): Promise<AllData> {
     db.prepare(`SELECT * FROM settings`),
     db.prepare(`SELECT * FROM meta`),
     db.prepare(`SELECT COUNT(*) AS n FROM oauth_tokens`),
+    db.prepare(`SELECT * FROM ad_stats ORDER BY week_start`),
   ]);
   const rows = (i: number): Row[] => results[i]?.results ?? [];
 
@@ -398,6 +467,15 @@ export async function loadAll(db: D1Database): Promise<AllData> {
       views: numOrNull(r.views),
       orders: numOrNull(r.orders),
       revenueCents: numOrNull(r.revenue_cents),
+    })),
+    adStats: rows(12).map((r) => ({
+      weekStart: str(r.week_start),
+      listingId: num(r.listing_id),
+      views: numOrNull(r.views),
+      clicks: numOrNull(r.clicks),
+      orders: numOrNull(r.orders),
+      revenueCents: numOrNull(r.revenue_cents),
+      spendCents: numOrNull(r.spend_cents),
     })),
     settings: settingsFromRows(rows(9)),
     meta,

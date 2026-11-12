@@ -315,6 +315,16 @@ export interface Briefing {
   createdAt: number;
 }
 
+/** Everything the Ads screen needs. The screen adds it up for the chosen range. */
+export interface AdsData {
+  weeks: import("./ads").AdsWeek[];
+  /** Typed-in numbers per advertised listing, per week. */
+  listingStats: import("./ads").AdStat[];
+  /** Roughly how much of each sale Etsy keeps in fees, in %. Used for "profit after ads". */
+  feeSharePct: number;
+  breakEvenRoas: number;
+}
+
 export interface DashboardData {
   generatedAt: number;
   today: string;
@@ -338,4 +348,5 @@ export interface DashboardData {
   briefing: Briefing | null;
   /** Latest visits by traffic source typed in by hand, if any. */
   trafficSources: { weekStart: string; sources: { label: string; visits: number }[] } | null;
+  ads: AdsData;
 }

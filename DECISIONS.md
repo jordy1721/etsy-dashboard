@@ -83,6 +83,18 @@ Everything on the list of screens and features is built and works on sample data
 - The Home Screen icon changed to match. An icon already on a Home Screen keeps the old picture until it is removed and added again.
 - Checked in a Chromium browser at iPhone 15 size and at 1440 and 1000px wide, light and dark: no sideways scrolling, no console errors. Still not tested on a physical iPhone.
 
+**Ads screen**
+- Laid out like Etsy's own Ads page: date range, six headline numbers (Views, Clicks, Orders, Revenue, Spend, ROAS) that double as the chart selector, a chart over time, and a sortable table of advertised listings.
+- Etsy's API has no ad statistics, so views, clicks, orders and revenue are typed in per week (whole shop, and optionally per listing). Nothing is invented: anything not typed in shows "not typed in", not zero.
+- Etsy's page shows days; this one works in weeks (Monday to Sunday), because typing numbers in daily is not realistic.
+- Spend follows the same rule as the Money screen: Etsy's bill wins for a week that has ad lines on it; typed spend is used for other weeks. The form says so when the bill overrides what was typed.
+- Added beyond Etsy's page: "Profit after ads" (ad sales minus Etsy's average fee share minus ad spend), the break-even ROAS, and a result label per listing (Earning / Losing money / Not enough clicks yet, judged only from 30 clicks). All estimates.
+- It cannot switch ads on or off or change the budget. The app stays read-only.
+- Ad spend moved from the Settings screen to the Ads screen so it is typed in one place only. Saving visits no longer touches ad spend, and the other way round.
+- Four new to-do rules: ads losing money over the last 4 weeks (needs A$5+ spend), an advertised listing with 30+ clicks and no orders, a click rate under 1% on 300+ ad views, and ad spend with no results typed in.
+- Not verified: the exact names and layout of the numbers on Etsy's Ads page (written from memory), and whether Etsy counts "revenue" there before or after discounts. Type in whatever Etsy shows.
+- A site still showing sample data is re-seeded once so the sample ad numbers appear.
+
 **Small things**
 - The Listings and Fix screens only consider active listings.
 - Chart colour was checked with a colour-blind-safety validator; charts are single-series bars with tap-to-see values.
