@@ -40,3 +40,22 @@ export async function api<T>(path: string, options: { method?: string; json?: un
 export function loadDashboard(): Promise<DashboardData> {
   return api<DashboardData>("/api/dashboard");
 }
+
+/** What the server answers after reading an uploaded CSV file. */
+export interface CsvUploadResult {
+  kind: "ads" | "stats";
+  columnsUsed: string[];
+  skippedRows: number;
+  from?: string;
+  to?: string;
+  days?: number;
+  weeks?: number;
+  listingRows?: number;
+  unmatchedListings?: string[];
+  usedChosenWeek?: boolean;
+}
+
+/** Send a CSV file's text to the server. `week` is only used for an ads file that has no dates. */
+export function uploadCsv(path: "/api/ads-csv" | "/api/stats-csv", text: string, week?: string): Promise<CsvUploadResult> {
+  return api<CsvUploadResult>(week ? `${path}?week=${week}` : path, { text });
+}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "preact/hooks";
 import { addDays, shortDay, weekStart } from "../../shared/dates";
 import { formatAud } from "../../shared/money";
 import type { DashboardData, WeeklyManual } from "../../shared/types";
-import { api } from "../api";
+import { api, uploadCsv } from "../api";
 import { Card, KV, Message, timeAgo } from "../components";
 
 type Msg = { ok: boolean; text: string } | null;
@@ -373,10 +373,13 @@ function CsvCard({ reload }: { reload: () => Promise<void> }) {
     setMsg(null);
     try {
       const text = await file.text();
-      const res = await api<{ days: number; from: string; to: string; columnsUsed: string[]; skippedRows: number }>("/api/stats-csv", { text });
+      const res = await uploadCsv("/api/stats-csv", text);
       setMsg({
         ok: true,
-        text: `Read ${res.days} days (${shortDay(res.from)} to ${shortDay(res.to)}) using columns: ${res.columnsUsed.join(", ")}.${res.skippedRows > 0 ? ` Skipped ${res.skippedRows} rows without a date.` : ""}`,
+        text:
+          res.kind === "ads"
+            ? `This is an Etsy Ads file, so it went to the Ads screen: ${res.weeks} week${res.weeks === 1 ? "" : "s"} added. Open the Ads tab to see it.`
+            : `Read ${res.days} days (${shortDay(res.from ?? "")} to ${shortDay(res.to ?? "")}) using columns: ${res.columnsUsed.join(", ")}.${res.skippedRows > 0 ? ` Skipped ${res.skippedRows} rows without a date.` : ""}`,
       });
       await reload();
     } catch (err) {
@@ -389,7 +392,7 @@ function CsvCard({ reload }: { reload: () => Promise<void> }) {
   return (
     <Card title="Upload Etsy Stats CSV">
       <p class="muted small" style="margin-bottom:10px">
-        On Etsy's Stats page, download the CSV, then choose it here. It needs a Date column and at least one of Visits, Views, Orders or Revenue. Daily visits from the file replace the weekly numbers for those days.
+        This box is for the Etsy <b>Stats</b> file (visits per day). The Etsy <b>Ads</b> file is uploaded on the Ads screen. On Etsy's Stats page, download the CSV, then choose it here. It needs a Date column and at least one of Visits, Views, Orders or Revenue. Daily visits from the file replace the weekly numbers for those days.
       </p>
       <input type="file" accept=".csv,text/csv" aria-label="Choose Etsy Stats CSV file" disabled={busy} onChange={(e) => void upload(e)} />
       {busy && <p class="muted small">Reading file…</p>}

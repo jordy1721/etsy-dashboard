@@ -9,7 +9,7 @@ import { adVerdict, adsByListing, totalAds, weeksInRange, type AdVerdict, type A
 import { addDays, shortDay, weekStart } from "../../shared/dates";
 import { formatAud } from "../../shared/money";
 import type { DashboardData } from "../../shared/types";
-import { api } from "../api";
+import { api, uploadCsv } from "../api";
 import { BarChart, Card, Est, KV, Message, Missing, pct } from "../components";
 
 type Msg = { ok: boolean; text: string } | null;
@@ -274,6 +274,64 @@ function EntryCard({ data, reload }: { data: DashboardData; reload: () => Promis
   );
 }
 
+// ---- Uploading the CSV file from Etsy Ads ---------------------------------------
+function CsvCard({ data, reload }: { data: DashboardData; reload: () => Promise<void> }) {
+  const thisMonday = weekStart(data.today);
+  const weeks = Array.from({ length: 12 }, (_, i) => addDays(thisMonday, -7 * i));
+  const [week, setWeek] = useState(thisMonday);
+  const [msg, setMsg] = useState<Msg>(null);
+  const [busy, setBusy] = useState(false);
+
+  const upload = async (e: { currentTarget: HTMLInputElement }) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await uploadCsv("/api/ads-csv", await file.text(), week);
+      const parts = [
+        `Added ${res.weeks} week${res.weeks === 1 ? "" : "s"} of ad numbers (${res.from === res.to ? `week of ${shortDay(res.from ?? "")}` : `${shortDay(res.from ?? "")} to ${shortDay(res.to ?? "")}`}).`,
+        `Columns used: ${res.columnsUsed.join(", ")}.`,
+        res.listingRows ? `${res.listingRows} listing rows matched.` : "",
+        res.usedChosenWeek ? `The file has no dates, so everything was put in the week of ${shortDay(weekStart(week))}.` : "",
+        res.unmatchedListings && res.unmatchedListings.length > 0 ? `Could not match these to a listing in your shop (still counted in the shop totals): ${res.unmatchedListings.join("; ")}.` : "",
+        res.skippedRows > 0 ? `Skipped ${res.skippedRows} rows (totals or rows without numbers).` : "",
+      ];
+      setMsg({ ok: true, text: parts.filter((p) => p !== "").join(" ") });
+      await reload();
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : "Something went wrong." });
+    }
+    input.value = ""; // allow choosing the same file again
+    setBusy(false);
+  };
+
+  return (
+    <Card title="Upload Etsy Ads CSV">
+      <p class="muted small" style="margin-bottom:10px">
+        Quicker than typing. On Etsy open <b>Marketing &gt; Etsy Ads</b>, download the CSV, then choose it here. Days in the file are added up into weeks. A week that is in the file replaces what was saved for that week.
+      </p>
+      <div class="stack">
+        <label class="field">
+          If the file has no dates in it, which week is it for?
+          <select value={week} onChange={(e) => setWeek(e.currentTarget.value)}>
+            {weeks.map((ws) => (
+              <option key={ws} value={ws}>
+                {shortDay(ws)} – {shortDay(addDays(ws, 6))}
+                {ws === thisMonday ? " (this week)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <input type="file" accept=".csv,text/csv" aria-label="Choose Etsy Ads CSV file" disabled={busy} onChange={(e) => void upload(e)} />
+        {busy && <p class="muted small">Reading file…</p>}
+        <Message msg={msg} />
+      </div>
+    </Card>
+  );
+}
+
 // ---- The screen ------------------------------------------------------------------
 export function Ads({ data, reload }: { data: DashboardData; reload: () => Promise<void> }) {
   const [rangeIndex, setRangeIndex] = useState(1);
@@ -392,15 +450,18 @@ export function Ads({ data, reload }: { data: DashboardData; reload: () => Promi
 
       <div class="split even">
         <EntryCard data={data} reload={reload} />
+        <div class="stack" style="gap:14px">
+        <CsvCard data={data} reload={reload} />
         <Card title="Where these numbers come from">
           <ul class="list-plain small muted">
-            <li>Etsy does not share ad views, clicks, orders or revenue through its API. Those are typed in by you.</li>
+            <li>Etsy does not share ad views, clicks, orders or revenue through its API. Those come from the CSV you upload or the numbers you type in.</li>
             <li>Ad spend is read from Etsy's bill when the bill shows ad charges for that week. Those lines are picked out by name, so treat them as probable.</li>
             <li>For a week with no ad charges on the bill, the spend you type in is used.</li>
             <li>"Profit after ads" takes Etsy's fees off the ad sales using your shop's average fee share. It is an estimate.</li>
             <li>This screen cannot turn ads on or off or change your budget. Do that on Etsy.</li>
           </ul>
         </Card>
+        </div>
       </div>
     </>
   );

@@ -10,6 +10,7 @@
 
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { looksLikeAdsCsv, parseAdsCsv } from "../shared/adsCsv";
 import { CsvError, parseStatsCsv } from "../shared/csv";
 import { isDay, weekStart } from "../shared/dates";
 import { parseDollarsToCents } from "../shared/money";
@@ -20,7 +21,7 @@ import {
 } from "./auth";
 import { maybeWriteBriefing } from "./briefing";
 import { REFRESH_COOLDOWN_SECONDS, buildDashboard } from "./dashboard";
-import { addCost, deleteAdWeek, deleteCost, deleteTokens, ensureReady, getMeta, saveAdWeek, saveDailyStats, saveSettings, saveWeeklyPart, setMeta } from "./db";
+import { addCost, importAdWeeks, deleteAdWeek, deleteCost, deleteTokens, ensureReady, getMeta, saveAdWeek, saveDailyStats, saveSettings, saveWeeklyPart, setMeta } from "./db";
 import { nowSeconds, type Env } from "./env";
 import { buildAuthUrl, exchangeCode, pkceChallenge, randomToken } from "./etsy/oauth";
 import { runSync } from "./etsy/sync";
@@ -333,13 +334,44 @@ app.post("/api/settings", async (c) => {
   return c.json({ ok: true });
 });
 
+/** Read an Etsy Ads CSV and save it as weekly ad numbers. Used by both upload boxes. */
+async function importAdsCsv(c: AppContext, text: string, chosenWeek: string | undefined) {
+  try {
+    const listings = await c.env.DB.prepare(`SELECT listing_id, title FROM listings`).all<{ listing_id: number; title: string }>();
+    const parsed = parseAdsCsv(text, { chosenWeek, listings: listings.results.map((l) => ({ listingId: l.listing_id, title: l.title })) });
+    if (parsed.weeks.length > 60) return c.json({ error: "This file covers more than 60 weeks. Download a shorter date range from Etsy and try again." }, 400);
+    await importAdWeeks(c.env.DB, parsed.weeks);
+    return c.json({
+      ok: true,
+      kind: "ads",
+      weeks: parsed.weeks.length,
+      from: parsed.weeks[0]?.weekStart,
+      to: parsed.weeks[parsed.weeks.length - 1]?.weekStart,
+      listingRows: parsed.weeks.reduce((n, w) => n + w.listings.length, 0),
+      columnsUsed: parsed.columnsUsed,
+      skippedRows: parsed.skippedRows,
+      unmatchedListings: parsed.unmatchedListings,
+      usedChosenWeek: parsed.usedChosenWeek,
+    });
+  } catch (err) {
+    if (err instanceof CsvError) return c.json({ error: err.message }, 400);
+    throw err;
+  }
+}
+
+// Etsy Ads CSV, uploaded on the Ads screen. ?week=YYYY-MM-DD is only used when the file has no dates.
+app.post("/api/ads-csv", async (c) => importAdsCsv(c, await c.req.text(), c.req.query("week")));
+
 app.post("/api/stats-csv", async (c) => {
   const text = await c.req.text();
+  // An Etsy Ads file dropped into the Stats box is sent to the Ads import instead of being misread.
+  if (looksLikeAdsCsv(text)) return importAdsCsv(c, text, c.req.query("week"));
   try {
     const parsed = parseStatsCsv(text);
     await saveDailyStats(c.env.DB, parsed.rows);
     return c.json({
       ok: true,
+      kind: "stats",
       days: parsed.rows.length,
       from: parsed.rows[0]?.day,
       to: parsed.rows[parsed.rows.length - 1]?.day,

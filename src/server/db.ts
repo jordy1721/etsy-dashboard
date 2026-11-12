@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { AdStat } from "../shared/ads";
+import type { AdsCsvWeek } from "../shared/adsCsv";
 import { DEFAULT_SETTINGS } from "../shared/types";
 import type {
   Cost, CostKind, DailyStat, LedgerEntry, Listing, Receipt, Review, Settings, ShopInfo, Snapshot, Transaction, WeeklyManual,
@@ -234,6 +235,42 @@ export async function saveAdWeek(db: D1Database, weekStartDay: string, spendCent
     weeklyStatement(db, merged),
     dropEmptyWeek(db, weekStartDay),
   ]);
+}
+
+/**
+ * Save the weeks read from an Etsy Ads CSV.
+ * For each week in the file: the whole-shop numbers and spend are replaced.
+ * Per-listing numbers are replaced only if the file has listings, so a
+ * shop-totals file does not wipe listing numbers typed in earlier.
+ * Visits already saved for those weeks are kept.
+ */
+export async function importAdWeeks(db: D1Database, weeks: AdsCsvWeek[]): Promise<void> {
+  const existing = await db.prepare(`SELECT * FROM weekly_manual`).all<Row>();
+  const byWeek = new Map(existing.results.map((r) => [str(r.week_start), r]));
+  const statements: D1PreparedStatement[] = [];
+  for (const w of weeks) {
+    const r = byWeek.get(w.weekStart);
+    statements.push(adStatStatement(db, w.shop));
+    if (w.listings.length > 0) {
+      statements.push(db.prepare(`DELETE FROM ad_stats WHERE week_start = ? AND listing_id != 0`).bind(w.weekStart));
+      statements.push(...w.listings.map((l) => adStatStatement(db, l)));
+    }
+    if (w.spendCents !== null) {
+      statements.push(
+        weeklyStatement(db, {
+          weekStart: w.weekStart,
+          adsSpendCents: w.spendCents,
+          visits: numOrNull(r?.visits),
+          srcSearch: numOrNull(r?.src_search),
+          srcAds: numOrNull(r?.src_ads),
+          srcEtsyOther: numOrNull(r?.src_etsy_other),
+          srcSocial: numOrNull(r?.src_social),
+          srcDirect: numOrNull(r?.src_direct),
+        }),
+      );
+    }
+  }
+  await runBatches(db, statements);
 }
 
 export async function deleteAdWeek(db: D1Database, weekStartDay: string): Promise<void> {

@@ -93,6 +93,9 @@ Everything on the list of screens and features is built and works on sample data
 - Ad spend moved from the Settings screen to the Ads screen so it is typed in one place only. Saving visits no longer touches ad spend, and the other way round.
 - Four new to-do rules: ads losing money over the last 4 weeks (needs A$5+ spend), an advertised listing with 30+ clicks and no orders, a click rate under 1% on 300+ ad views, and ad spend with no results typed in.
 - Not verified: the exact names and layout of the numbers on Etsy's Ads page (written from memory), and whether Etsy counts "revenue" there before or after discounts. Type in whatever Etsy shows.
+- **Etsy Ads CSV upload** (on the Ads screen): finds columns by name (Views or Impressions, Clicks, Orders, Revenue or Sales, Spend or Cost, Date, Listing), skips lines above the header and "Total" rows, and adds days up into weeks. A file with no dates goes into the one week chosen next to the upload button. Listings are matched by listing ID, or by title. Ratio columns (click rate, ROAS, cost per click) are ignored and recalculated. **Not verified against a real Etsy Ads file**: the format is not documented and no real file was available. If a file is refused, the error lists the columns it found.
+- An Etsy Ads file dropped into the Stats upload box in Settings is recognised and sent to the Ads import instead.
+- Spend from a CSV counts as "typed in": Etsy's bill still wins for a week where the bill shows ad charges.
 - A site still showing sample data is re-seeded once so the sample ad numbers appear.
 
 **Small things**
